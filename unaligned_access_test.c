@@ -50,16 +50,25 @@ void run_test_with_seed(const char* thread_name, uint32_t seed, const void* chun
   uint64_t* chunk4GB_64bit_words_shift_2bytes = (uint64_t*)(chunk4GB+2);
   uint64_t* chunk4GB_64bit_words_shift_4bytes = (uint64_t*)(chunk4GB+4);
 
-  //benchmarks
+  //dry-runs
   RUN_TIMED_LOOP(thread_name, seed, /*NOOP*/, count)
   RUN_TIMED_LOOP(thread_name, seed, count++, count)
+
+  //byte read
   RUN_TIMED_LOOP(thread_name, seed, ch |= chunk4GB_bytes[_offset_], ch)
   RUN_TIMED_LOOP(thread_name, seed, ch ^= chunk4GB_bytes[_offset_], ch)
+
+  //word read
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words[_offset_/8], u64)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_1byte[_offset_/8], u64)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_2bytes[_offset_/8], u64)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_4bytes[_offset_/8], u64)
+
+  //atomic byte read
   RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_RELAXED), ch)
+  RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_SEQ_CST), ch)
+  RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_ACQUIRE), ch)
+  RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_CONSUME), ch)
 }
 
 struct thread_info {
