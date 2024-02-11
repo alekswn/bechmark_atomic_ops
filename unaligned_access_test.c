@@ -41,10 +41,13 @@ void * allocate(size_t size, uint32_t seed) {
 
 void run_test_with_seed(const char* thread_name, uint32_t seed, const void* chunk4GB) {
   printf("%s: Running tests with seed %u\n", thread_name, seed);
-  size_t count; char ch; uint64_t u64; //agregators
+  size_t count; uint8_t u8; uint32_t u32; uint64_t u64; //agregators
 
   //arrays
   char* chunk4GB_bytes = (char*) chunk4GB;
+  uint32_t* chunk4GB_32bit_words = (uint32_t*) chunk4GB;
+  uint32_t* chunk4GB_32bit_words_shift_1byte = (uint32_t*)(chunk4GB+1);
+  uint32_t* chunk4GB_32bit_words_shift_2bytes = (uint32_t*)(chunk4GB+2);
   uint64_t* chunk4GB_64bit_words = (uint64_t*) chunk4GB;
   uint64_t* chunk4GB_64bit_words_shift_1byte = (uint64_t*)(chunk4GB+1);
   uint64_t* chunk4GB_64bit_words_shift_2bytes = (uint64_t*)(chunk4GB+2);
@@ -55,20 +58,63 @@ void run_test_with_seed(const char* thread_name, uint32_t seed, const void* chun
   RUN_TIMED_LOOP(thread_name, seed, count++, count)
 
   //byte read
-  RUN_TIMED_LOOP(thread_name, seed, ch |= chunk4GB_bytes[_offset_], ch)
-  RUN_TIMED_LOOP(thread_name, seed, ch ^= chunk4GB_bytes[_offset_], ch)
+  RUN_TIMED_LOOP(thread_name, seed, u8 |= chunk4GB_bytes[_offset_], u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 ^= chunk4GB_bytes[_offset_], u8)
 
-  //word read
+  //32-bit word read
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= chunk4GB_32bit_words[_offset_/4], u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= chunk4GB_32bit_words_shift_1byte[_offset_/4], u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= chunk4GB_32bit_words_shift_2bytes[_offset_/4], u32)
+
+  //64-bit word read
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words[_offset_/8], u64)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_1byte[_offset_/8], u64)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_2bytes[_offset_/8], u64)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_4bytes[_offset_/8], u64)
 
-  //atomic byte read
-  RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_RELAXED), ch)
-  RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_SEQ_CST), ch)
-  RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_ACQUIRE), ch)
-  RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_CONSUME), ch)
+  //atomic byte load
+  RUN_TIMED_LOOP(thread_name, seed, u8 ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_RELAXED), u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_SEQ_CST), u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_ACQUIRE), u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_CONSUME), u8)
+
+  //atomic 32-bit word load
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words + _offset_/4, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words + _offset_/4, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words + _offset_/4, __ATOMIC_ACQUIRE), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words + _offset_/4, __ATOMIC_CONSUME), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, __ATOMIC_ACQUIRE), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, __ATOMIC_CONSUME), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, __ATOMIC_ACQUIRE), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 ^= __atomic_load_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, __ATOMIC_CONSUME), u32)
+
+  //atomic 64-bit word load
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words + _offset_/8, __ATOMIC_RELAXED), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words + _offset_/8, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words + _offset_/8, __ATOMIC_ACQUIRE), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words + _offset_/8, __ATOMIC_CONSUME), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_RELAXED), u64)
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_SEQ_CST), u64)
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_ACQUIRE), u64)
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_CONSUME), u64)
+#endif
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_RELAXED), u64)
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_SEQ_CST), u64)
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_ACQUIRE), u64)
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_CONSUME), u64)
+#endif
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_RELAXED), u64)
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_SEQ_CST), u64)
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_ACQUIRE), u64)
+  //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_CONSUME), u64)
+#endif
 }
 
 struct thread_info {
@@ -105,7 +151,7 @@ void run_tests_with_seed(uint32_t seed, const void* chunk) {
 int main(int argc, char* argv[]) {
   setlinebuf(stdout);
   printf("Allocating and filling 4 GB chunk on heap...\n");
-  void* chunk4GB = allocate((size_t)(UINT32_MAX)+4, 42);
+  void* chunk4GB = allocate((size_t)(UINT32_MAX)+8, 42);
   if (argc == 1) {
     run_tests_with_seed(42, chunk4GB);
     return 0;
