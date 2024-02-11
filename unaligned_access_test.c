@@ -152,6 +152,38 @@ void run_test_with_seed(const char* thread_name, uint32_t seed, const void* chun
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+24); __atomic_store_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64, __ATOMIC_RELEASE), u64)
 #endif
 
+  //atomic byte excahange
+  RUN_TIMED_LOOP(thread_name, seed, u8 = __atomic_exchange_n(chunk4GB_bytes + _offset_, u8+23, __ATOMIC_RELAXED), u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 = __atomic_exchange_n(chunk4GB_bytes + _offset_, u8+24, __ATOMIC_SEQ_CST), u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 = __atomic_exchange_n(chunk4GB_bytes + _offset_, u8+25, __ATOMIC_RELEASE), u8)
+
+  //atomic 32-bit word exchange
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words + _offset_/4, u32+26, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words + _offset_/4, u32+27, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words + _offset_/4, u32+28, __ATOMIC_RELEASE), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, u32+29, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, u32+30, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, u32+31, __ATOMIC_RELEASE), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, u32+32, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, u32+33, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = __atomic_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, u32+34, __ATOMIC_RELEASE), u32)
+
+  //atomic 64-bit word exchange
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words + _offset_/8, u64+35, __ATOMIC_RELAXED), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words + _offset_/8, u64+36, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words + _offset_/8, u64+37, __ATOMIC_RELEASE), u64)
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64+38, __ATOMIC_RELAXED), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64+39, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64+40, __ATOMIC_RELEASE), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64+41, __ATOMIC_RELAXED), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64+42, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64+43, __ATOMIC_RELEASE), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64+44, __ATOMIC_RELAXED), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64+45, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64+46, __ATOMIC_RELEASE), u64)
+#endif
+
 }
 
 struct thread_info {
@@ -179,10 +211,10 @@ void run_tests_with_seed(uint32_t seed, const void* chunk) {
     tinfo[tnum].chunk = chunk;
     assert(pthread_create(&tinfo[tnum].thread_id, &tattr, &run_test_with_seed_thrd_wrapper, &tinfo[tnum]) == 0);
   }
-  assert(pthread_attr_destroy(&tattr) == 0);
   for (size_t tnum = 0; tnum < THREAD_NUM; tnum++) {
     assert(pthread_join(tinfo[tnum].thread_id, NULL) == 0);
   }
+  assert(pthread_attr_destroy(&tattr) == 0);
 }
 
 int main(int argc, char* argv[]) {
