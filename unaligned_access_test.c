@@ -16,6 +16,7 @@
 #define RUN_TIMED_LOOP(_thread_name_, _seed_, _statement_, _aggregator_)\
   {\
     uint64_t _tstart_ = clock_gettime_nsec_np(CLOCK_MONOTONIC);\
+    _aggregator_ = 0;\
     for (uint32_t _offset_ = SHIFT(_seed_); _offset_!=_seed_; _offset_ = SHIFT(_offset_)) {\
       _statement_;\
     }\
@@ -40,27 +41,24 @@ void * allocate(size_t size, uint32_t seed) {
 
 void run_test_with_seed(const char* thread_name, uint32_t seed, const void* chunk4GB) {
   printf("%s: Running tests with seed %u\n", thread_name, seed);
-  RUN_TIMED_LOOP(thread_name, seed, , 0)
-  size_t count = 0;
-  RUN_TIMED_LOOP(thread_name, seed, count++, count)
-  char ch = 0;
+  size_t count; char ch; uint64_t u64; //agregators
+
+  //arrays
   char* chunk4GB_bytes = (char*) chunk4GB;
-  RUN_TIMED_LOOP(thread_name, seed, ch |= chunk4GB_bytes[_offset_], ch)
-  ch = 0;
-  RUN_TIMED_LOOP(thread_name, seed, ch ^= chunk4GB_bytes[_offset_], ch)
-  uint64_t u64 = 0;
   uint64_t* chunk4GB_64bit_words = (uint64_t*) chunk4GB;
-  RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words[_offset_/8], u64)
-  u64=0;
   uint64_t* chunk4GB_64bit_words_shift_1byte = (uint64_t*)(chunk4GB+1);
-  RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_1byte[_offset_/8], u64)
-  u64=0;
   uint64_t* chunk4GB_64bit_words_shift_2bytes = (uint64_t*)(chunk4GB+2);
-  RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_2bytes[_offset_/8], u64)
-  u64=0;
   uint64_t* chunk4GB_64bit_words_shift_4bytes = (uint64_t*)(chunk4GB+4);
+
+  //benchmarks
+  RUN_TIMED_LOOP(thread_name, seed, /*NOOP*/, count)
+  RUN_TIMED_LOOP(thread_name, seed, count++, count)
+  RUN_TIMED_LOOP(thread_name, seed, ch |= chunk4GB_bytes[_offset_], ch)
+  RUN_TIMED_LOOP(thread_name, seed, ch ^= chunk4GB_bytes[_offset_], ch)
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words[_offset_/8], u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_1byte[_offset_/8], u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_2bytes[_offset_/8], u64)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= chunk4GB_64bit_words_shift_4bytes[_offset_/8], u64)
-  ch=0;
   RUN_TIMED_LOOP(thread_name, seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_RELAXED), ch)
 }
 
