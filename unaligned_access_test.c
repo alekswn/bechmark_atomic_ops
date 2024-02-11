@@ -115,6 +115,43 @@ void run_test_with_seed(const char* thread_name, uint32_t seed, const void* chun
   //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_ACQUIRE), u64)
   //RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_CONSUME), u64)
 #endif
+
+  //atomic byte store
+  RUN_TIMED_LOOP(thread_name, seed, u8 = SHIFT(u8+1); __atomic_store_n(chunk4GB_bytes + _offset_, u8, __ATOMIC_RELAXED), u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 = SHIFT(u8+2); __atomic_store_n(chunk4GB_bytes + _offset_, u8, __ATOMIC_SEQ_CST), u8)
+  RUN_TIMED_LOOP(thread_name, seed, u8 = SHIFT(u8+3); __atomic_store_n(chunk4GB_bytes + _offset_, u8, __ATOMIC_RELEASE), u8)
+
+  //atomic 32-bit word store
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+4); __atomic_store_n(chunk4GB_32bit_words + _offset_/4, u32, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+5); __atomic_store_n(chunk4GB_32bit_words + _offset_/4, u32, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+6); __atomic_store_n(chunk4GB_32bit_words + _offset_/4, u32, __ATOMIC_RELEASE), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+7); __atomic_store_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, u32, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+8); __atomic_store_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, u32, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+9); __atomic_store_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, u32, __ATOMIC_RELEASE), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+10); __atomic_store_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, u32, __ATOMIC_RELAXED), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+11); __atomic_store_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, u32, __ATOMIC_SEQ_CST), u32)
+  RUN_TIMED_LOOP(thread_name, seed, u32 = SHIFT(u32+12); __atomic_store_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, u32, __ATOMIC_RELEASE), u32)
+
+  //atomic 64-bit word store
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+13); __atomic_store_n(chunk4GB_64bit_words + _offset_/8, u64, __ATOMIC_RELAXED), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+14); __atomic_store_n(chunk4GB_64bit_words + _offset_/8, u64, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+15); __atomic_store_n(chunk4GB_64bit_words + _offset_/8, u64, __ATOMIC_RELEASE), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+16); __atomic_store_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64, __ATOMIC_RELAXED), u64)
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+17); __atomic_store_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+18); __atomic_store_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64, __ATOMIC_RELEASE), u64)
+#endif
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+19); __atomic_store_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64, __ATOMIC_RELAXED), u64)
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+20); __atomic_store_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+21); __atomic_store_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64, __ATOMIC_RELEASE), u64)
+#endif
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+22); __atomic_store_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64, __ATOMIC_RELAXED), u64)
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+23); __atomic_store_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64, __ATOMIC_SEQ_CST), u64)
+  RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+24); __atomic_store_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64, __ATOMIC_RELEASE), u64)
+#endif
+
 }
 
 struct thread_info {
