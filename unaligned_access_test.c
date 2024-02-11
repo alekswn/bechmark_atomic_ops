@@ -65,6 +65,9 @@ void run_test_with_seed(uint32_t seed, const void* chunk4GB) {
   uint64_t* chunk4GB_64bit_words_shift_4bytes = (uint64_t*)(chunk4GB+1);
   RUN_TIMED_LOOP(seed, u64 ^= chunk4GB_64bit_words_shift_4bytes[_offset_/8])
   printf("XOR: %llx\n", u64);
+  ch=0;
+  RUN_TIMED_LOOP(seed, ch ^= __atomic_load_n(chunk4GB_bytes + _offset_, __ATOMIC_RELAXED))
+  printf("XOR: %hhx\n", ch);
 }
 
 int main(int argc, char* argv[]) {
