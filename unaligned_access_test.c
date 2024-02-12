@@ -4,7 +4,7 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <pthread.h>
-#include <strings.h>
+#include <string.h>
 #include <stdbool.h>
 
 #define M (4294967291) //2^32 - 5
