@@ -25,6 +25,13 @@ struct sync_context {
     pthread_cond_t cond;
 };
 
+
+static uint64_t clock_get_nsec() {
+  struct timespec  ts;
+  assert(clock_gettime(CLOCK_MONOTONIC, &ts)!=-1);
+  return (uint64_t)(ts.tv_sec)*1000000000ULL + (uint64_t)(ts.tv_nsec);
+}
+
 #define MAKE_SYNC_CONTEXT(_thread_number) (struct sync_context){_thread_number, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER}
 #define SYNC_THREADS(_sync_context_ptr, _leader_statement)\
   {\
@@ -46,12 +53,12 @@ struct sync_context {
 #define RUN_TIMED_LOOP(_thread_name_, _seed_, _test_statement_, _aggregator_, _sync_context_ptr, _setup_statement_)\
   {\
     SYNC_THREADS(_sync_context_ptr, _setup_statement_);\
-    uint64_t _tstart_ = clock_gettime_nsec_np(CLOCK_MONOTONIC);\
+    uint64_t _tstart_ = clock_get_nsec();\
     _aggregator_ = 0;\
     for (uint32_t _offset_ = SHIFT(_seed_); _offset_!=_seed_; _offset_ = SHIFT(_offset_)) {\
       _test_statement_;\
     }\
-    uint64_t _tdiff_ = clock_gettime_nsec_np(CLOCK_MONOTONIC) - _tstart_;\
+    uint64_t _tdiff_ = clock_get_nsec() - _tstart_;\
     printf("%s: '%s' %s = %llx, took %llu.%09llu seconds, \n", _thread_name_, XSTR(_test_statement_), XSTR(_aggregator_), (unsigned long long)_aggregator_, _tdiff_/1000000000, _tdiff_%1000000000);\
   }
 
@@ -289,6 +296,7 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
 
+#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
@@ -327,7 +335,7 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
-
+#endif
 }
 
 struct thread_info {
