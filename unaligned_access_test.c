@@ -32,7 +32,7 @@ static uint64_t clock_get_nsec() {
   return (uint64_t)(ts.tv_sec)*1000000000ULL + (uint64_t)(ts.tv_nsec);
 }
 
-static struct {
+struct thread_registry {
   bool ready;
   pthread_mutex_t mutex;
   pthread_cond_t cond;
@@ -355,15 +355,16 @@ struct thread_info {
   struct sync_context* sync_context_ptr;
   uint32_t seed;
   void* chunk;
+  struct thread_registry* registry_ptr;
 };
 
 static void* run_test_with_seed_thrd_wrapper(void* tinfo) {
   struct thread_info* args = (struct thread_info*)tinfo;
-  assert(pthread_mutex_lock(&thread_registry.mutex) == 0);
-  do {
-    assert(pthread_cond_wait(&thread_registry.cond, &thread_registry.mutex) == 0);\
-  } while(!thread_registry.ready);
-  assert(pthread_mutex_unlock(&thread_registry.mutex) == 0);\
+  assert(pthread_mutex_lock(&args->registry_ptr->mutex) == 0);
+  while(!args->registry_ptr->ready) {
+    assert(pthread_cond_wait(&args->registry_ptr->cond, &args->registry_ptr->mutex) == 0);
+  };
+  assert(pthread_mutex_unlock(&args->registry_ptr->mutex) == 0);
   run_test_with_seed(args->thread_name, args->sync_context_ptr, args->seed, args->chunk);
   return NULL;
 }
@@ -378,6 +379,7 @@ void run_test_with_seed_in_threads(uint32_t seed, void* chunk) {
     tinfo[tnum].seed = seed;
     tinfo[tnum].chunk = chunk;
     tinfo[tnum].sync_context_ptr = &sync_context;
+    tinfo[tnum].registry_ptr = &thread_registry;
     assert(pthread_create(&thread_registry.children[tnum], &tattr, &run_test_with_seed_thrd_wrapper, &tinfo[tnum]) == 0);
   }
   thread_registry.parent = pthread_self();
