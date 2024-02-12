@@ -32,26 +32,10 @@ static uint64_t clock_get_nsec() {
   return (uint64_t)(ts.tv_sec)*1000000000ULL + (uint64_t)(ts.tv_nsec);
 }
 
-struct thread_registry {
-  bool ready;
-  pthread_mutex_t mutex;
-  pthread_cond_t cond;
-  pthread_t parent;
-  pthread_t children[THREAD_NUM];
-} thread_registry = {.ready = false, .mutex = PTHREAD_MUTEX_INITIALIZER, .cond = PTHREAD_COND_INITIALIZER};
-static __thread bool sigbus_received = false;
+static __thread size_t sigbus_count = 0;
 static void sigbus_handler(int signo) {
   assert(signo == SIGBUS);
-  sigbus_received=true;
-  if (!thread_registry.ready) return;
-
-  if (!pthread_equal(pthread_self(), thread_registry.parent)) {
-    assert(pthread_kill(thread_registry.parent, SIGBUS) == 0);
-    return;
-  }
-  for (size_t i = 0; i < THREAD_NUM; i++) {
-      assert(pthread_kill(thread_registry.children[i], SIGBUS) == 0);
-  }
+  sigbus_count++;
 }
 
 static void setup_sigbus_handler() {
@@ -82,12 +66,12 @@ static void setup_sigbus_handler() {
     SYNC_THREADS(_sync_context_ptr, _setup_statement_);\
     uint64_t _tstart_ = clock_get_nsec();\
     _aggregator_ = 0;\
-    sigbus_received = false;\
-    for (uint32_t _offset_ = SHIFT(_seed_); _offset_!=_seed_ && !sigbus_received; _offset_ = SHIFT(_offset_)) {\
+    sigbus_count = 0;\
+    for (uint32_t _offset_ = SHIFT(_seed_); _offset_!=_seed_ && !sigbus_count; _offset_ = SHIFT(_offset_)) {\
       _test_statement_;\
     }\
     uint64_t _tdiff_ = clock_get_nsec() - _tstart_;\
-    printf("%s: '%s' %s = %llx, took %llu.%09llu seconds, %s \n", _thread_name_, XSTR(_test_statement_), XSTR(_aggregator_), (unsigned long long)_aggregator_, _tdiff_/1000000000, _tdiff_%1000000000, sigbus_received ? "SIGBUS" : "OK");\
+    printf("%s: '%s' %s = %llx, took %llu.%09llu seconds, SIGBUS count: %zu \n", _thread_name_, XSTR(_test_statement_), XSTR(_aggregator_), (unsigned long long)_aggregator_, _tdiff_/1000000000, _tdiff_%1000000000, sigbus_count);\
   }
 
 #define NOOP
@@ -355,16 +339,10 @@ struct thread_info {
   struct sync_context* sync_context_ptr;
   uint32_t seed;
   void* chunk;
-  struct thread_registry* registry_ptr;
 };
 
 static void* run_test_with_seed_thrd_wrapper(void* tinfo) {
   struct thread_info* args = (struct thread_info*)tinfo;
-  assert(pthread_mutex_lock(&args->registry_ptr->mutex) == 0);
-  while(!args->registry_ptr->ready) {
-    assert(pthread_cond_wait(&args->registry_ptr->cond, &args->registry_ptr->mutex) == 0);
-  };
-  assert(pthread_mutex_unlock(&args->registry_ptr->mutex) == 0);
   run_test_with_seed(args->thread_name, args->sync_context_ptr, args->seed, args->chunk);
   return NULL;
 }
@@ -374,21 +352,16 @@ void run_test_with_seed_in_threads(uint32_t seed, void* chunk) {
   assert(pthread_attr_init(&tattr) == 0);
   struct thread_info tinfo[THREAD_NUM];
   struct sync_context sync_context = MAKE_SYNC_CONTEXT(THREAD_NUM);
+  pthread_t thread_ids[THREAD_NUM];
   for (size_t tnum = 0; tnum < THREAD_NUM; tnum++) {
     assert(snprintf(tinfo[tnum].thread_name, MAX_THREAD_NAME, "Thread %zu", tnum) > 0);
     tinfo[tnum].seed = seed;
     tinfo[tnum].chunk = chunk;
     tinfo[tnum].sync_context_ptr = &sync_context;
-    tinfo[tnum].registry_ptr = &thread_registry;
-    assert(pthread_create(&thread_registry.children[tnum], &tattr, &run_test_with_seed_thrd_wrapper, &tinfo[tnum]) == 0);
+    assert(pthread_create(&thread_ids[tnum], &tattr, &run_test_with_seed_thrd_wrapper, &tinfo[tnum]) == 0);
   }
-  thread_registry.parent = pthread_self();
-  thread_registry.ready = true;
-  assert(pthread_mutex_lock(&thread_registry.mutex) == 0);
-  assert(pthread_cond_broadcast(&thread_registry.cond) == 0);
-  assert(pthread_mutex_unlock(&thread_registry.mutex) == 0);
   for (size_t tnum = 0; tnum < THREAD_NUM; tnum++) {
-    assert(pthread_join(thread_registry.children[tnum], NULL) == 0);
+    assert(pthread_join(thread_ids[tnum], NULL) == 0);
   }
   assert(pthread_attr_destroy(&tattr) == 0);
 }
