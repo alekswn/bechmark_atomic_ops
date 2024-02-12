@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdbool.h>
+#include <signal.h>
 
 #define M (4294967291) //2^32 - 5
 #define A (1588635695)
@@ -25,11 +26,21 @@ struct sync_context {
     pthread_cond_t cond;
 };
 
-
 static uint64_t clock_get_nsec() {
   struct timespec  ts;
   assert(clock_gettime(CLOCK_MONOTONIC, &ts)!=-1);
   return (uint64_t)(ts.tv_sec)*1000000000ULL + (uint64_t)(ts.tv_nsec);
+}
+
+static __thread bool sigbus_received = false;
+static void sigbus_handler(int signo) {
+    assert(signo == SIGBUS);
+    sigbus_received = true;
+}
+
+static void setup_sigbus_handler() {
+  struct sigaction sa = {.sa_handler = sigbus_handler};
+  sigaction(SIGBUS, &sa, NULL);
 }
 
 #define MAKE_SYNC_CONTEXT(_thread_number) (struct sync_context){_thread_number, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER}
@@ -55,11 +66,12 @@ static uint64_t clock_get_nsec() {
     SYNC_THREADS(_sync_context_ptr, _setup_statement_);\
     uint64_t _tstart_ = clock_get_nsec();\
     _aggregator_ = 0;\
-    for (uint32_t _offset_ = SHIFT(_seed_); _offset_!=_seed_; _offset_ = SHIFT(_offset_)) {\
+    for (uint32_t _offset_ = SHIFT(_seed_); _offset_!=_seed_ && !sigbus_received; _offset_ = SHIFT(_offset_)) {\
       _test_statement_;\
     }\
     uint64_t _tdiff_ = clock_get_nsec() - _tstart_;\
-    printf("%s: '%s' %s = %llx, took %llu.%09llu seconds, \n", _thread_name_, XSTR(_test_statement_), XSTR(_aggregator_), (unsigned long long)_aggregator_, _tdiff_/1000000000, _tdiff_%1000000000);\
+    printf("%s: '%s' %s = %llx, took %llu.%09llu seconds, %s \n", _thread_name_, XSTR(_test_statement_), XSTR(_aggregator_), (unsigned long long)_aggregator_, _tdiff_/1000000000, _tdiff_%1000000000, sigbus_received ? "SIGBUS" : "OK");\
+    sigbus_received = false;\
   }
 
 #define NOOP
@@ -142,23 +154,17 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words + _offset_/8, __ATOMIC_ACQUIRE), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words + _offset_/8, __ATOMIC_CONSUME), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_ACQUIRE), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, __ATOMIC_CONSUME), u64, sync_context_ptr, NOOP)
-#endif
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_ACQUIRE), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, __ATOMIC_CONSUME), u64, sync_context_ptr, NOOP)
-#endif
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_ACQUIRE), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 ^= __atomic_load_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, __ATOMIC_CONSUME), u64, sync_context_ptr, NOOP)
-#endif
 
   //atomic byte store
   RUN_TIMED_LOOP(thread_name, seed, u8 = SHIFT(u8+1); __atomic_store_n(chunk4GB_bytes + _offset_, u8, __ATOMIC_RELAXED), u8, sync_context_ptr, NOOP)
@@ -181,20 +187,14 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+14); __atomic_store_n(chunk4GB_64bit_words + _offset_/8, u64, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+15); __atomic_store_n(chunk4GB_64bit_words + _offset_/8, u64, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+16); __atomic_store_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+17); __atomic_store_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+18); __atomic_store_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
-#endif
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+19); __atomic_store_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+20); __atomic_store_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+21); __atomic_store_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, u64, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
-#endif
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+22); __atomic_store_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+23); __atomic_store_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = SHIFT(u64+24); __atomic_store_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
-#endif
 
   //atomic byte excahange
   RUN_TIMED_LOOP(thread_name, seed, u8 = __atomic_exchange_n(chunk4GB_bytes + _offset_, u8+23, __ATOMIC_RELAXED), u8, sync_context_ptr, NOOP)
@@ -216,7 +216,6 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words + _offset_/8, u64+35, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words + _offset_/8, u64+36, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words + _offset_/8, u64+37, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64+38, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64+39, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, u64+40, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
@@ -226,7 +225,6 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64+44, __ATOMIC_RELAXED), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64+45, __ATOMIC_SEQ_CST), u64, sync_context_ptr, NOOP)
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64+46, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
-#endif
 
   //atomic byte compare-and-exchange
   RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
@@ -296,7 +294,6 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
 
-#ifndef __APPLE__//Crushes with `EXC_BAD_ACCESS (code=257, address=0x2e2e04a69)` on Apple M2
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
@@ -335,7 +332,6 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
   RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
-#endif
 }
 
 struct thread_info {
@@ -377,7 +373,7 @@ void run_tests_with_seed(uint32_t seed, void* chunk) {
 }
 
 int main(int argc, char* argv[]) {
-  setlinebuf(stdout);
+  setup_sigbus_handler();
   printf("Allocating and filling 4 GB chunk on heap...\n");
   void* chunk4GB = allocate(CHUNK_SIZE, 42);
   if (argc == 1) {
