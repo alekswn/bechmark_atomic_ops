@@ -4,8 +4,8 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <pthread.h>
-#include <stdbool.h>
 #include <strings.h>
+#include <stdbool.h>
 
 #define M (4294967291) //2^32 - 5
 #define A (1588635695)
@@ -221,7 +221,112 @@ void run_test_with_seed(const char* thread_name, struct sync_context* sync_conte
   RUN_TIMED_LOOP(thread_name, seed, u64 = __atomic_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, u64+46, __ATOMIC_RELEASE), u64, sync_context_ptr, NOOP)
 #endif
 
-  //RUN_TIMED_LOOP(thread_name, seed, u8 = __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, u8+23, __ATOMIC_RELAXED), u8)
+  //atomic byte compare-and-exchange
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, char t = 0; __atomic_compare_exchange_n(chunk4GB_bytes + _offset_, &t, u8 = SHIFT(u8+47)%0xff, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u8, sync_context_ptr, zero_out_chunk(chunk4GB));
+
+  //atomic 32bit word compare-and-exchange
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_1byte + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint32_t t = 0; __atomic_compare_exchange_n(chunk4GB_32bit_words_shift_2bytes + _offset_/4, &t, u32 = SHIFT(u32+47)%0xffffffff, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u32, sync_context_ptr, zero_out_chunk(chunk4GB));
+
+  //atomic 64bit word compare-and-exchange
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_1byte + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_2bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_RELAXED, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
+  RUN_TIMED_LOOP(thread_name, seed, uint64_t t = 0; __atomic_compare_exchange_n(chunk4GB_64bit_words_shift_4bytes + _offset_/8, &t, u64 = SHIFT(u64+47), false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST), u64, sync_context_ptr, zero_out_chunk(chunk4GB));
 
 }
 
