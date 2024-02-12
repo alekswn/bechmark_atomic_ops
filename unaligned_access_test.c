@@ -40,7 +40,7 @@ static void sigbus_handler(int signo) {
 
 static void setup_sigbus_handler() {
   struct sigaction sa = {.sa_handler = sigbus_handler};
-  sigaction(SIGBUS, &sa, NULL);
+  assert(sigaction(SIGBUS, &sa, NULL) != SIG_ERR);
 }
 
 #define MAKE_SYNC_CONTEXT(_thread_number) (struct sync_context){_thread_number, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER}
